@@ -1,4 +1,4 @@
-Default Project [![Build Status](https://drone.io/github.com/denisbakhtin/defaultproject/status.png)](https://drone.io/github.com/denisbakhtin/defaultproject/latest)
+Default Project 
 ===============
 
 Provides essentials that most web applications need - MVC pattern and user authorisation that can be easily extended.
@@ -10,7 +10,7 @@ It consists of 3 core components:
 - pq - Postgres driver for the Go language - https://github.com/lib/pq
 - sqlx - Relational database access interface - https://github.com/jmoiron/sqlx
 
-# Changes from original https://github.com/elcct/defaultproject
+# Changes from original version
 - Replaced MongoDB with Postgresql
 - Removed Application.Route reflection dependencies
 - Removed Application.Controller type, thereby simplified controllers package
@@ -193,3 +193,11 @@ Now if you run:
 ```
 
 Project should automatically rebuild itself when a change occurs.
+
+# TODO
+Database migrations
+CSRF middleware
+goRBAC role-based access control
+MithrilJS admin dashboard
+Brunch.IO asset compilation tool
+Asset package with go-bindata
