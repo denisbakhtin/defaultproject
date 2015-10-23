@@ -6,15 +6,18 @@ import (
 )
 
 type ConfigurationDatabase struct {
-	Hosts    string `json:"hosts"`
-	Database string `json:"database"`
+	Host     string `json:"host"`
+	Name     string `json:"name"`
+	User     string `json:"user"`
+	Password string `json:"password"`
 }
 
 type Configuration struct {
-	Secret       string `json:"secret"`
-	PublicPath   string `json:"public_path"`
-	TemplatePath string `json:"template_path"`
-	Database     ConfigurationDatabase
+	Secret        string `json:"secret"`
+	PublicPath    string `json:"public_path"`
+	TemplatePath  string `json:"template_path"`
+	MigrationPath string `json:"migration_path"`
+	Database      ConfigurationDatabase
 }
 
 func (configuration *Configuration) Load(filename string) (err error) {

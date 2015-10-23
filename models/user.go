@@ -1,40 +1,42 @@
 package models
 
 import (
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
-	"code.google.com/p/go.crypto/bcrypt"
-	"github.com/golang/glog"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-  ID       bson.ObjectId `bson:"_id,omitempty"`
-  Email string `bson:"e"`
-  Username string `bson:"u"`
-  Password []byte  `bson:"p"`
-  Timestamp time.Time `bson:"t"`
+	Id        int64
+	Email     string
+	Name      string
+	Password  []byte
+	Timestamp time.Time
 }
 
-func (user *User) HashPassword(password string) {
+func (user *User) HashPassword(password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		glog.Fatalf("Couldn't hash password: %v", err)
-		panic(err)
+		return err
 	}
 	user.Password = hash
+	return nil
 }
 
-func GetUserByEmail(database *mgo.Database, email string) (user *User) {
-	err := database.C("users").Find(bson.M{"e": email}).One(&user)
-
-	if err != nil {
-		glog.Warningf("Can't get user by email: %v", err)
-	}	
-	return
+func GetUser(db *sqlx.DB, id int64) (*User, error) {
+	user := User{}
+	err := db.Get(&user, "SELECT * FROM users WHERE id=$1", id)
+	return &user, err
 }
 
-func InsertUser(database *mgo.Database, user *User) error {	
-	user.ID = bson.NewObjectId()
-	return database.C("users").Insert(user)	
+func GetUserByEmail(db *sqlx.DB, email string) (*User, error) {
+	user := User{}
+	err := db.Get(user, "SELECT * FROM users WHERE lower(email)=lower($1)", email)
+	return &user, err
+}
+
+func InsertUser(db *sqlx.DB, user *User) error {
+	err := db.QueryRow("INSERT INTO users(email, name, password, timestamp) VALUES(lower($1),$2,$3,$4) RETURNING id", user.Email, user.Name, user.Password, time.Now()).Scan(&user.Id)
+	return err
 }

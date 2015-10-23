@@ -3,14 +3,15 @@ package web
 import (
 	"net/http"
 
-	"github.com/elcct/defaultproject/helpers"
-	"github.com/zenazn/goji/web"
 	"html/template"
+
+	"github.com/denisbakhtin/defaultproject/helpers"
+	"github.com/zenazn/goji/web"
 )
 
 // Home page route
-func (controller *Controller) Index(c web.C, r *http.Request) (string, int) {
-	t := controller.GetTemplate(c)
+func Index(c web.C, r *http.Request) (string, int) {
+	t := helpers.GetTemplate(c)
 
 	widgets := helpers.Parse(t, "home", nil)
 

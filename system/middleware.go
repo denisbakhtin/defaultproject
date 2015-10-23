@@ -1,14 +1,14 @@
 package system
 
-import (	
+import (
 	"net/http"
+
+	"github.com/denisbakhtin/defaultproject/models"
 	"github.com/golang/glog"
-	"github.com/zenazn/goji/web"
-	"github.com/elcct/defaultproject/models"
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/jmoiron/sqlx"
+	"github.com/zenazn/goji/web"
 )
 
 // Makes sure templates are stored in the context
@@ -33,11 +33,8 @@ func (application *Application) ApplySessions(c *web.C, h http.Handler) http.Han
 
 // Makes sure controllers can have access to the database
 func (application *Application) ApplyDatabase(c *web.C, h http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {				
-		session := application.DBSession.Clone()
-		defer session.Close()
-		c.Env["DBSession"] = session		
-		c.Env["DBName"] = application.Configuration.Database.Database
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		c.Env["DB"] = application.DB
 		h.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
@@ -45,16 +42,14 @@ func (application *Application) ApplyDatabase(c *web.C, h http.Handler) http.Han
 
 func (application *Application) ApplyAuth(c *web.C, h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		session := c.Env["Session"].(*sessions.Session)		
-		if userId, ok := session.Values["User"].(bson.ObjectId); ok {
-			dbSession := c.Env["DBSession"].(*mgo.Session)
-			database := dbSession.DB(c.Env["DBName"].(string))
+		session := c.Env["Session"].(*sessions.Session)
+		if userId, ok := session.Values["UserId"].(int64); ok {
+			database := c.Env["DB"].(*sqlx.DB)
 
-			user := new(models.User)		
-			err := database.C("users").Find(bson.M{"_id": userId}).One(&user)
+			user, err := models.GetUser(database, userId)
 			if err != nil {
 				glog.Warningf("Auth error: %v", err)
-				c.Env["User"] = nil				
+				c.Env["User"] = nil
 			} else {
 				c.Env["User"] = user
 			}
@@ -63,4 +58,3 @@ func (application *Application) ApplyAuth(c *web.C, h http.Handler) http.Handler
 	}
 	return http.HandlerFunc(fn)
 }
-

@@ -1,60 +1,65 @@
 package web
 
 import (
-	"github.com/elcct/defaultproject/models"
-	"github.com/golang/glog"
-	"github.com/zenazn/goji/web"
 	"html/template"
 	"net/http"
-	"time"
+
+	"github.com/denisbakhtin/defaultproject/helpers"
+	"github.com/denisbakhtin/defaultproject/models"
+	"github.com/golang/glog"
+	"github.com/zenazn/goji/web"
 )
 
 // Sign up route
-func (controller *Controller) SignUp(c web.C, r *http.Request) (string, int) {
-	t := controller.GetTemplate(c)
-	session := controller.GetSession(c)
+func SignUp(c web.C, r *http.Request) (string, int) {
+	t := helpers.GetTemplate(c)
+	session := helpers.GetSession(c)
 
 	// With that kind of flags template can "figure out" what route is being rendered
 	c.Env["IsSignUp"] = true
 
 	c.Env["Flash"] = session.Flashes("auth")
 
-	var widgets = controller.Parse(t, "auth/signup", c.Env)
+	var widgets = helpers.Parse(t, "auth/signup", c.Env)
 
 	c.Env["Title"] = "Default Project - Sign Up"
 	c.Env["Content"] = template.HTML(widgets)
 
-	return controller.Parse(t, "main", c.Env), http.StatusOK
+	return helpers.Parse(t, "main", c.Env), http.StatusOK
 }
 
 // Sign Up form submit route. Registers new user or shows Sign Up route with appropriate messages set in session
-func (controller *Controller) SignUpPost(c web.C, r *http.Request) (string, int) {
+func SignUpPost(c web.C, r *http.Request) (string, int) {
 	email, password := r.FormValue("email"), r.FormValue("password")
 
-	session := controller.GetSession(c)
-	database := controller.GetDatabase(c)
+	session := helpers.GetSession(c)
+	database := helpers.GetDatabase(c)
 
-	user := models.GetUserByEmail(database, email)
+	user, err := models.GetUserByEmail(database, email)
 
 	if user != nil {
 		session.AddFlash("User exists", "auth")
-		return controller.SignUp(c, r)
+		return SignUp(c, r)
 	}
 
 	user = &models.User{
-		Username:  email,
-		Email:     email,
-		Timestamp: time.Now(),
+		Name:  email,
+		Email: email,
 	}
-	user.HashPassword(password)
+	err = user.HashPassword(password)
+	if err != nil {
+		session.AddFlash("Error whilst registering user.", "auth")
+		glog.Errorf("Error whilst registering user: %v", err)
+		return SignUp(c, r)
+	}
 
 	if err := models.InsertUser(database, user); err != nil {
-		session.AddFlash("Error whilst registering user.")
+		session.AddFlash("Error whilst registering user.", "auth")
 		glog.Errorf("Error whilst registering user: %v", err)
-		return controller.SignUp(c, r)
+		return SignUp(c, r)
 	}
 
-	session.Values["User"] = user.ID
+	session.Values["UserId"] = user.Id
 
 	return "/", http.StatusSeeOther
 }

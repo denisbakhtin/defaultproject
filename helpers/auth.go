@@ -1,21 +1,20 @@
 package helpers
 
 import (
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
-	"code.google.com/p/go.crypto/bcrypt"
-	"github.com/elcct/defaultproject/models"
+	"github.com/denisbakhtin/defaultproject/models"
+	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func Login(c *mgo.Database, email string, password string) (user *models.User, err error) {
-	err = c.C("users").Find(bson.M{"e": email}).One(&user)
+func Login(db *sqlx.DB, email string, password string) (*models.User, error) {
+	user := models.User{}
+	err := db.Get(&user, "SELECT * FROM users where email=lower($1)", email)
 	if err != nil {
-		return
+		return nil, err
 	}
-
 	err = bcrypt.CompareHashAndPassword(user.Password, []byte(password))
 	if err != nil {
-		user = nil	
+		return nil, err
 	}
-	return
+	return &user, nil
 }

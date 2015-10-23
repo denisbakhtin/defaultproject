@@ -1,4 +1,4 @@
-Default Project [![Build Status](https://drone.io/github.com/elcct/defaultproject/status.png)](https://drone.io/github.com/elcct/defaultproject/latest)
+Default Project [![Build Status](https://drone.io/github.com/denisbakhtin/defaultproject/status.png)](https://drone.io/github.com/denisbakhtin/defaultproject/latest)
 ===============
 
 Provides essentials that most web applications need - MVC pattern and user authorisation that can be easily extended.
@@ -7,11 +7,17 @@ It consists of 3 core components:
 
 - Goji - A web microframework for Golang - http://goji.io/
 - Gorilla web toolkit sessions - cookie (and filesystem) sessions - http://www.gorillatoolkit.org/pkg/sessions
-- mgo - MongoDB driver for the Go language - http://labix.org/mgo
+- pq - Postgres driver for the Go language - https://github.com/lib/pq
+- sqlx - Relational database access interface - https://github.com/jmoiron/sqlx
+
+# Changes from original https://github.com/elcct/defaultproject
+- Replaced MongoDB with Postgresql
+- Removed Application.Route reflection dependencies
+- Removed Application.Controller type, thereby simplified controllers package
 
 # Dependencies
 
-Default Project requires `Go`, `MongoDB` and few other tools installed.
+Default Project requires `Go`, `Postgresql` and few other tools installed.
 
 Instructions below have been tested on `Ubuntu 14.04`.
 
@@ -25,13 +31,11 @@ Then install remaining dependecies:
 sudo apt-get install git mercurial subversion bzr
 ```
 
-MongoDB:
+Postgresql:
 
 ```
-sudo apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
-sudo echo 'deb http://downloads-distro.mongodb.org/repo/debian-sysvinit dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list
 sudo apt-get update
-sudo apt-get install mongodb-org
+sudo apt-get install postgresql postgresql-contrib
 ```
 
 
@@ -39,13 +43,13 @@ sudo apt-get install mongodb-org
 No go to your GOPATH location and run:
 
 ```
-go get github.com/elcct/defaultproject
+go get github.com/denisbakhtin/defaultproject
 ```
 
 And then:
 
 ```
-go install github.com/elcct/defaultproject
+go install github.com/denisbakhtin/defaultproject
 ```
 
 In your GOPATH directory you can create `config.json` file:
@@ -53,11 +57,13 @@ In your GOPATH directory you can create `config.json` file:
 ```
 {
 	"secret": "secret",
-	"public_path": "./src/github.com/elcct/defaultproject/public",
-	"template_path": "./src/github.com/elcct/defaultproject/views",	
+	"public_path": "./src/github.com/denisbakhtin/defaultproject/public",
+	"template_path": "./src/github.com/denisbakhtin/defaultproject/views",	
 	"database": {
-		"hosts": "localhost",
-		"database": "defaultproject"
+		"host": "192.168.0.111",
+		"name": "defaultproject_dev",
+    "user": "postgresql_user",
+    "password": "postgresql_password@"
 	}
 }
 ```
@@ -110,43 +116,43 @@ This file starts your web application and also contains routes definition.
 
 I assume you have followed installation instructions and you have `defaultproject` installed in your `GOPATH` location.
 
-Let's say I want to create `Amazing Website`. I create new `GitHub` repository `https://github.com/elcct/amazingwebsite` (of course replace that with your own repository).
+Let's say I want to create `Amazing Website`. I create new `GitHub` repository `https://github.com/denisbakhtin/amazingwebsite` (of course replace that with your own repository).
 
 Now I have to prepare `defaultproject`. First thing is that I have to delete its `.git` directory.
 
 I issue:
 
 ```
-rm -rf src/github.com/elcct/defaultproject/.git
+rm -rf src/github.com/denisbakhtin/defaultproject/.git
 ```
 
-Then I want to replace all references from `github.com/elcct/defaultproject` to `github.com/elcct/amazingwebsite`:
+Then I want to replace all references from `github.com/denisbakhtin/defaultproject` to `github.com/denisbakhtin/amazingwebsite`:
 
 ```
-grep -rl 'github.com/elcct/defaultproject' ./ | xargs sed -i 's/github.com\/elcct\/defaultproject/github.com\/elcct\/amazingwebsite/g'
+grep -rl 'github.com/denisbakhtin/defaultproject' ./ | xargs sed -i 's/github.com\/denisbakhtin\/defaultproject/github.com\/denisbakhtin\/amazingwebsite/g'
 ```
 
 Now I have to move all `defaultproject` files to the new location:
 
 ```
-mv src/github.com/elcct/defaultproject/ src/github.com/elcct/amazingwebsite
+mv src/github.com/denisbakhtin/defaultproject/ src/github.com/denisbakhtin/amazingwebsite
 ```
 
 And push it to my new repository at `GitHub`:
 
 ```
-cd src/github.com/elcct/amazingwebsite
+cd src/github.com/denisbakhtin/amazingwebsite
 git init
 git add --all .
 git commit -m "Amazing Website First Commit"
-git remote add origin https://github.com/elcct/amazingwebsite.git
+git remote add origin https://github.com/denisbakhtin/amazingwebsite.git
 git push -u origin master
 ```
 
 You can now go back to your `GOPATH` and check if everything is ok:
 
 ```
-go install github.com/elcct/amazingwebsite
+go install github.com/denisbakhtin/amazingwebsite
 ```
 
 And that's it. 
@@ -164,7 +170,7 @@ go get github.com/pilu/fresh
 Then create a config file `runner.conf` in your `GOPATH`:
 
 ```
-root:              ./src/github.com/elcct/amazingwebsite
+root:              ./src/github.com/denisbakhtin/amazingwebsite
 tmp_path:          ./tmp
 build_name:        runner-build
 build_log:         runner-build-errors.log

@@ -1,30 +1,24 @@
-# Compiled Object files, Static and Dynamic libs (Shared Objects)
-*.o
-*.a
-*.so
+bower_components/*
+public/*
 
-# Folders
-_obj
-_test
+lib-cov
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+*.iml
+*.idea
 
-# Architecture specific extensions/prefixes
-*.[568vq]
-[568vq].out
+pids
+logs
+results
 
-*.cgo1.go
-*.cgo2.c
-_cgo_defun.c
-_cgo_gotypes.go
-_cgo_export.*
+node_modules
+npm-debug.log
 
-_testmain.go
-
-*.exe
-*.test
-
-**/github.com/
-**/labix.org/
-**/code.google.com/
-bin/*
-pkg/*
-
+config.json
+new-migration
+reflex.conf

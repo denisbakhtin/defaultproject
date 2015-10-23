@@ -1,18 +1,16 @@
 package system
 
 import (
-	"encoding/gob"
-	"github.com/golang/glog"
+	"fmt"
 	"net/http"
 
-	"reflect"
+	"github.com/golang/glog"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 
 	"github.com/zenazn/goji/web"
 
 	"github.com/gorilla/sessions"
-
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 
 	"html/template"
 
@@ -26,12 +24,10 @@ type Application struct {
 	Configuration *Configuration
 	Template      *template.Template
 	Store         *sessions.CookieStore
-	DBSession     *mgo.Session
+	DB            *sqlx.DB //it maintains a connection pool internally, thread safe
 }
 
 func (application *Application) Init(filename *string) {
-	gob.Register(bson.ObjectId(""))
-
 	application.Configuration = &Configuration{}
 	err := application.Configuration.Load(*filename)
 
@@ -65,8 +61,9 @@ func (application *Application) LoadTemplates() error {
 
 func (application *Application) ConnectToDatabase() {
 	var err error
-	application.DBSession, err = mgo.Dial(application.Configuration.Database.Hosts)
+	connectionString := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", application.Configuration.Database.Host, application.Configuration.Database.User, application.Configuration.Database.Password, application.Configuration.Database.Name)
 
+	application.DB, err = sqlx.Connect("postgres", connectionString)
 	if err != nil {
 		glog.Fatalf("Can't connect to the database: %v", err)
 		panic(err)
@@ -75,18 +72,16 @@ func (application *Application) ConnectToDatabase() {
 
 func (application *Application) Close() {
 	glog.Info("Bye!")
-	application.DBSession.Close()
+	application.DB.Close()
 }
 
-func (application *Application) Route(controller interface{}, route string) interface{} {
+func (application *Application) Route(hand func(web.C, *http.Request) (string, int)) web.Handler {
 	fn := func(c web.C, w http.ResponseWriter, r *http.Request) {
 		c.Env["Content-Type"] = "text/html"
 
-		methodValue := reflect.ValueOf(controller).MethodByName(route)
-		methodInterface := methodValue.Interface()
-		method := methodInterface.(func(c web.C, r *http.Request) (string, int))
-
-		body, code := method(c, r)
+		glog.Errorf("%+v\n", hand)
+		body, code := hand(c, r)
+		//body, code := "", 200
 
 		if session, exists := c.Env["Session"]; exists {
 			err := session.(*sessions.Session).Save(r, w)
@@ -108,5 +103,5 @@ func (application *Application) Route(controller interface{}, route string) inte
 			io.WriteString(w, body)
 		}
 	}
-	return fn
+	return web.HandlerFunc(fn)
 }
