@@ -196,8 +196,13 @@ Project should automatically rebuild itself when a change occurs.
 
 # TODO
 Database migrations
+
 CSRF middleware
+
 goRBAC role-based access control
+
 MithrilJS admin dashboard
+
 Brunch.IO asset compilation tool
+
 Asset package with go-bindata
