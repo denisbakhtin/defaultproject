@@ -3,47 +3,68 @@ package main
 import (
 	"flag"
 	"net/http"
+	"os"
 
-	"github.com/golang/glog"
+	"github.com/Sirupsen/logrus"
 
 	"github.com/denisbakhtin/defaultproject/controllers/web"
 	"github.com/denisbakhtin/defaultproject/system"
 
+	"github.com/GeertJohan/go.rice"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/graceful"
 	gojiweb "github.com/zenazn/goji/web"
 )
 
 func main() {
-	filename := flag.String("config", "config.json", "Path to configuration file")
+	env := flag.String("e", "development", "Application environment: development, production, testing")
+	migration := flag.String("migrate", "", "Run DB migrations: up, down, redo, new [MIGRATION_NAME] and then os.Exit(0)")
 
 	flag.Parse()
-	defer glog.Flush()
+	logrus.SetFormatter(&logrus.TextFormatter{})
+	logrus.SetOutput(os.Stderr)
+	logrus.SetLevel(logrus.InfoLevel)
 
 	var application = &system.Application{}
 
-	application.Init(filename)
-	application.LoadTemplates()
+	//create rice boxes for folders with data
+	configBox := rice.MustFindBox("config")         //config dir
+	migrationsBox := rice.MustFindBox("migrations") //migrations dir
+	viewsBox := rice.MustFindBox("views")           //views dir
+	publicBox := rice.MustFindBox("public")         //public dir
+	imagesBox := rice.MustFindBox("public/images")  //public/images dir
+
+	application.Init(env, configBox)
 	application.ConnectToDatabase()
+	if len(*migration) > 0 {
+		//Read https://github.com/rubenv/sql-migrate for more info about migrations
+		application.RunMigrations(migrationsBox, migration)
+		application.Close()
+		os.Exit(0)
+	}
+	err := application.LoadTemplates(viewsBox)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	// Setup static files
 	static := gojiweb.New()
-	static.Get("/assets/*", http.StripPrefix("/assets/", http.FileServer(http.Dir(application.Configuration.PublicPath))))
 
+	//static.Get("/assets/*", http.StripPrefix("/assets/", http.FileServer(http.Dir(application.Configuration.PublicPath))))
+	static.Get("/assets/*", http.StripPrefix("/assets/", http.FileServer(publicBox.HTTPBox())))
 	http.Handle("/assets/", static)
 
-	// Apply middleware
+	// Couple of files - in the real world you would use nginx to serve them.
+	goji.Get("/robots.txt", http.FileServer(publicBox.HTTPBox()))
+	goji.Get("/favicon.ico", http.FileServer(imagesBox.HTTPBox()))
+
+	//Apply middlewares
 	goji.Use(application.ApplyTemplates)
 	goji.Use(application.ApplySessions)
 	goji.Use(application.ApplyDatabase)
 	goji.Use(application.ApplyAuth)
 
-	// Couple of files - in the real world you would use nginx to serve them.
-	goji.Get("/robots.txt", http.FileServer(http.Dir(application.Configuration.PublicPath)))
-	goji.Get("/favicon.ico", http.FileServer(http.Dir(application.Configuration.PublicPath+"/images")))
-
 	// Home page
-	//goji.Get("/", application.Route(controller, "Index"))
 	goji.Get("/", application.Route(web.Index))
 
 	// Sign In routes

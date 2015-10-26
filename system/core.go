@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/golang/glog"
+	"github.com/GeertJohan/go.rice"
+	"github.com/Sirupsen/logrus"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
@@ -16,7 +17,6 @@ import (
 
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -24,38 +24,41 @@ type Application struct {
 	Configuration *Configuration
 	Template      *template.Template
 	Store         *sessions.CookieStore
-	DB            *sqlx.DB //it maintains a connection pool internally, thread safe
+	DB            *sqlx.DB //has internal threadsafe connection pool
 }
 
-func (application *Application) Init(filename *string) {
-	application.Configuration = &Configuration{}
-	err := application.Configuration.Load(*filename)
+func (application *Application) Init(env *string, box *rice.Box) {
+	var err error
+	application.Configuration, err = LoadConfiguration(env, box.MustBytes("config.json"))
 
 	if err != nil {
-		glog.Fatalf("Can't read configuration file: %s", err)
+		logrus.Fatalf("Can't read configuration file: %s", err)
 		panic(err)
 	}
 
 	application.Store = sessions.NewCookieStore([]byte(application.Configuration.Secret))
 }
 
-func (application *Application) LoadTemplates() error {
-	var templates []string
+func (application *Application) LoadTemplates(box *rice.Box) error {
+	tmpl := template.New("")
 
 	fn := func(path string, f os.FileInfo, err error) error {
 		if f.IsDir() != true && strings.HasSuffix(f.Name(), ".html") {
-			templates = append(templates, path)
+			var err error
+			tmpl, err = tmpl.Parse(box.MustString(path))
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
 
-	err := filepath.Walk(application.Configuration.TemplatePath, fn)
-
+	err := box.Walk("", fn)
 	if err != nil {
 		return err
 	}
 
-	application.Template = template.Must(template.ParseFiles(templates...))
+	application.Template = tmpl
 	return nil
 }
 
@@ -65,28 +68,42 @@ func (application *Application) ConnectToDatabase() {
 
 	application.DB, err = sqlx.Connect("postgres", connectionString)
 	if err != nil {
-		glog.Fatalf("Can't connect to the database: %v", err)
+		logrus.Fatalf("Can't connect to the database: %v", err)
 		panic(err)
 	}
 }
 
+func (application *Application) RunMigrations(box *rice.Box, command *string) {
+	switch *command {
+	case "new":
+		migrateNew(box)
+	case "up":
+		migrateUp(application.DB.DB, box)
+	case "down":
+		migrateDown(application.DB.DB, box)
+	case "redo":
+		migrateDown(application.DB.DB, box)
+		migrateUp(application.DB.DB, box)
+	default:
+		logrus.Fatalf("Wrong migration flag %q, acceptable values: up, down", *command)
+	}
+}
+
 func (application *Application) Close() {
-	glog.Info("Bye!")
+	logrus.Info("Bye!")
 	application.DB.Close()
 }
 
-func (application *Application) Route(hand func(web.C, *http.Request) (string, int)) web.Handler {
+func (application *Application) Route(action func(web.C, *http.Request) (string, int)) web.Handler {
 	fn := func(c web.C, w http.ResponseWriter, r *http.Request) {
 		c.Env["Content-Type"] = "text/html"
 
-		glog.Errorf("%+v\n", hand)
-		body, code := hand(c, r)
-		//body, code := "", 200
+		body, code := action(c, r)
 
 		if session, exists := c.Env["Session"]; exists {
 			err := session.(*sessions.Session).Save(r, w)
 			if err != nil {
-				glog.Errorf("Can't save session: %v", err)
+				logrus.Errorf("Can't save session: %v", err)
 			}
 		}
 

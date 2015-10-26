@@ -2,7 +2,7 @@ package system
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 )
 
 type ConfigurationDatabase struct {
@@ -12,28 +12,27 @@ type ConfigurationDatabase struct {
 	Password string `json:"password"`
 }
 
+type Configurations struct {
+	Development Configuration
+	Production  Configuration
+	Testing     Configuration
+}
 type Configuration struct {
-	Secret        string `json:"secret"`
-	PublicPath    string `json:"public_path"`
-	TemplatePath  string `json:"template_path"`
-	MigrationPath string `json:"migration_path"`
-	Database      ConfigurationDatabase
+	Secret   string `json:"secret"`
+	Database ConfigurationDatabase
 }
 
-func (configuration *Configuration) Load(filename string) (err error) {
-	data, err := ioutil.ReadFile(filename)
-
-	if err != nil {
-		return
+func LoadConfiguration(env *string, data []byte) (*Configuration, error) {
+	confs := &Configurations{}
+	err := json.Unmarshal(data, &confs)
+	switch *env {
+	case "production":
+		return &confs.Production, err
+	case "development":
+		return &confs.Development, err
+	case "testing":
+		return &confs.Testing, err
+	default:
+		return nil, fmt.Errorf("Unknown environment flag")
 	}
-
-	err = configuration.Parse(data)
-
-	return
-}
-
-func (configuration *Configuration) Parse(data []byte) (err error) {
-	err = json.Unmarshal(data, &configuration)
-
-	return
 }

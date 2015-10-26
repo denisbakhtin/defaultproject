@@ -19,7 +19,9 @@ results
 node_modules
 npm-debug.log
 
-config.json
+config/config.json
 new-migration
 reflex.conf
 git_save
+*.rice-box.go
+server

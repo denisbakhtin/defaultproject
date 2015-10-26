@@ -14,6 +14,12 @@ It consists of 3 core components:
 - Replaced MongoDB with Postgresql
 - Removed Application.Route reflection dependencies
 - Removed Application.Controller type, thereby simplified controllers package
+- Asset packaging with [go.rice](https://github.com/GeertJohan/go.rice)
+- Separate settings for development, testing & production environments (see config/config.json.example)
+- Built-in migration command based on https://github.com/rubenv/sql-migrate
+
+# Compilation
+`rice embed-go && go build -o server` creates `server` binary with packed in assets (including migrations & template files). For more options on using `rice` tool see (https://github.com/GeertJohan/go.rice)
 
 # Dependencies
 
@@ -194,15 +200,3 @@ Now if you run:
 
 Project should automatically rebuild itself when a change occurs.
 
-# TODO
-Database migrations
-
-CSRF middleware
-
-goRBAC role-based access control
-
-MithrilJS admin dashboard
-
-Brunch.IO asset compilation tool
-
-Asset package with go-bindata
