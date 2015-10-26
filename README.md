@@ -19,7 +19,7 @@ It consists of 3 core components:
 - Built-in migration command based on https://github.com/rubenv/sql-migrate
 
 # Compilation
-`rice embed-go && go build -o server` creates `server` binary with packed in assets (including migrations & template files). For more options on using `rice` tool see (https://github.com/GeertJohan/go.rice)
+`rice embed-go && go build -o server` creates `server` binary with packed in assets (including migrations & template files). For more options on using `rice` tool see https://github.com/GeertJohan/go.rice
 
 # Dependencies
 
